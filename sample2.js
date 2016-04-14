@@ -44,7 +44,7 @@
             processor.disconnect(0);
             processor.onaudioprocess = null;
             osc.stop(0);
-            alert("Thank you for listening!!");
+            console.log("Thank you for listening!!");
         }
 
         if (new_step != step)
@@ -99,12 +99,14 @@
       var dt = 1.0 / context.sampleRate;
       var is_top = false;
       var gain = 0.0;
-      var sustain = 0.5;
+      var sustain_level = 0.5;
+	  var attack = 0.01;
+	  var dekey = 0.03;
+	  var release = 1  - attack;
 
-      var dattack = dt / 0.01;
-      var ddekey  = dt / 0.03;
-      var dsustain = dt / 0.7;
-      var drelease = dt / 0.8;
+      var dattack = dt / attack;
+      var ddekey  = dt / dekey;
+      var drelease = dt / (release - dekey);
 
       var _envelope = function ()
       {
@@ -123,13 +125,13 @@
 
         if (is_top)
         {
-          if (gain > sustain)
+          if (gain > sustain_level)
           {
               gain -= ddekey;
           }
           else
           {
-              gain -= dsustain;
+              gain -= drelease;
           }
 
           if (gain < 0.0)
