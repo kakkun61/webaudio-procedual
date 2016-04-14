@@ -3,35 +3,44 @@
   var onDOMContentLoaded = function ()
   {
     var is_pressed = new Object();
-    is_pressed[97] = false;
-    is_pressed[115] = false;
-    is_pressed[100] = false;
-    is_pressed[102] = false;
-    is_pressed[103] = false;
-    is_pressed[104] = false;
-    is_pressed[106] = false;
-    is_pressed[107] = false;
+    is_pressed["KeyA"] = false;
+    is_pressed["KeyS"] = false;
+    is_pressed["KeyD"] = false;
+    is_pressed["KeyF"] = false;
+    is_pressed["KeyG"] = false;
+    is_pressed["KeyH"] = false;
+    is_pressed["KeyJ"] = false;
+    is_pressed["KeyK"] = false;
 
 	var freqs = new Object();
 	var base_freq = 440;
 	var freq_rate = Math.pow(2, 1/12);
-    freqs[97]  = base_freq * Math.pow(freq_rate, 3);
-    freqs[115] = base_freq * Math.pow(freq_rate, 5);
-    freqs[100] = base_freq * Math.pow(freq_rate, 7);
-    freqs[102] = base_freq * Math.pow(freq_rate, 8);
-    freqs[103] = base_freq * Math.pow(freq_rate, 10);
-    freqs[104] = base_freq * Math.pow(freq_rate, 12);
-    freqs[106] = base_freq * Math.pow(freq_rate, 14);
-    freqs[107] = base_freq * Math.pow(freq_rate, 15);
+    freqs["KeyA"]  = base_freq * Math.pow(freq_rate, 3);
+    freqs["KeyS"] = base_freq * Math.pow(freq_rate, 5);
+    freqs["KeyD"] = base_freq * Math.pow(freq_rate, 7);
+    freqs["KeyF"] = base_freq * Math.pow(freq_rate, 8);
+    freqs["KeyG"] = base_freq * Math.pow(freq_rate, 10);
+    freqs["KeyH"] = base_freq * Math.pow(freq_rate, 12);
+    freqs["KeyJ"] = base_freq * Math.pow(freq_rate, 14);
+    freqs["KeyK"] = base_freq * Math.pow(freq_rate, 15);
 
-    document.onkeypress = function(evt)
+    document.onkeydown = function(evt)
     {
         evt = evt || window.event;
-        var charCode = evt.keyCode || evt.which;
-        console.log(charCode);
+        var charCode = evt.code || evt.which;
         if (charCode in is_pressed)
         {
             is_pressed[charCode] = true;
+        }
+    }
+
+    document.onkeyup = function (evt)
+    {
+        evt = evt || window.event;
+        var charCode = evt.code || evt.which;
+        if (charCode in is_pressed)
+        {
+            is_pressed[charCode] = false;
         }
     }
 
@@ -50,7 +59,7 @@
     var main = function ()
     {
 	  var osc_funcs = new Array();
-	  for (key in freqs)
+	  for (var key in freqs)
 	  {
           var osc_func = genOscillator(freqs[key]);
           var envelope = genEnvelope(key, osc_func);
@@ -63,9 +72,9 @@
         for (var channel = 0; channel < outputBuffer.numberOfChannels; channel++)
         {
             var output = event.outputBuffer.getChannelData(channel);
-            for (var buf_i=0; buf_i<this.bufferSize; buf_i++)
+            for (var buf_i = 0; buf_i < this.bufferSize; buf_i++)
             {
-                output[buf_i] = f(); // [-0.5:0.5)
+                output[buf_i] = f();
             }
         }
       }
@@ -76,7 +85,7 @@
 		var _m = function ()
 		{
 			var ret = 0.0;
-			for (key in osc_funcs)
+			for (var key in osc_funcs)
 			{
 				ret += osc_funcs[key]();
 			}
@@ -89,59 +98,101 @@
     var genEnvelope = function (key_code, osc_func)
     {
         var dt = 1.0 / context.sampleRate;
-        var attack = 0.01; //MAxまでの時間
-        var decay = 0.03; // Maxからsustain_levelまで落ちる時間
-        var release = 0.8; // sustain_levelから0まで落ちる時間
+        var attack = 4; // Maxまでの時間（秒）
+        var decay = 3; // Maxからsustain_levelまで落ちる時間（秒）
+        var release = 5; // sustain_levelから0まで落ちる時間（秒）
         var sustain_level = 0.3;
 
+        // 1サンプルでの増減量（絶対値）
         var dattack = dt / attack;
-        var ddecay = dt / decay;
-        var drelease = dt / release;
+        var ddecay = (1 - sustain_level) * dt / decay;
+        var drelease = sustain_level * dt / release;
 
-        var is_top = false;
-        var gain = 0.0;  // 音量
+        var gain = 0.0; // 音量
+
+        var start_at = -1.0; // 音が鳴り始めた UNIX 時刻（鳴っていないときは負値）
+
+        var qadsr = 'q'; // デバッグ用 直前の状態を表す quiet attack decay sustain release
 
         var _osc = function ()
         {
-            if (is_pressed[key_code] === false)
+            (function()
             {
-                gain -= drelease;
-                if (gain < 0.0)
+                if (is_pressed[key_code])
                 {
-                    gain = 0.0;
-                }
-                return gain * osc_func();
-            }
+                    if (start_at < 0)
+                    {
+                        // quiet → attack
+                        console.log("quiet → attack");
+                        start_at = Date.now() / 1000;
+                        gain = dattack;
+                        return;
+                    }
 
-            // Pressed
-            if (is_top)
-            {
-                is_top = false;
-                if (gain > sustain_level)
-                {
-                    gain -= ddecay;
+                    var elapsed = Date.now() / 1000 - start_at; // 経過時間（秒）
+                    if (elapsed < attack)
+                    {
+                        // attack
+                        if (qadsr !== 'a')
+                        {
+                            console.log("attack");
+                            qadsr = 'a'
+                        }
+                        gain += dattack;
+                        return;
+                    }
+
+                    if (elapsed < attack + decay)
+                    {
+                        // decay
+                        if (qadsr !== 'd')
+                        {
+                            console.log("decay");
+                            qadsr = 'd'
+                        }
+                        gain -= ddecay;
+                        return;
+                    }
+
+                    // sustain
+                    if (qadsr !== 's')
+                    {
+                        console.log("sustain");
+                        qadsr = 's'
+                    }
+                    gain = sustain_level;
+                    return;
                 }
-                else
+
+                // key released
+                if (0 <= start_at)
                 {
                     gain -= drelease;
+                    if (gain < 0)
+                    {
+                        // release → quiet
+                        console.log("release → quiet");
+                        gain = 0;
+                        start_at = -1;
+                    }
+                    else
+                    {
+                        if (qadsr !== 'r')
+                        {
+                            console.log("release");
+                            qadsr = 'r'
+                        }
+                    }
+                    return;
                 }
-                
-                if (gain < 0.0)
-                {
-                    gain = 0.0;
-                }
-                return gain * osc_func();
-            }
 
-            // Still not top
-            gain += dattack;
-            if (gain > 1.0)
-            {
-                is_top = true;
-                is_pressed[key_code] = false;
-                gain = 1.0;
-            }
-            return gain * osc_func();
+                if (qadsr !== 'q')
+                {
+                    console.log("quiet");
+                    qadsr = 'q'
+                }                
+            })();
+            return osc_func() * gain;
         }
         return _osc;
     }
@@ -156,10 +207,10 @@
 
         var _osc = function ()
         {
-                var ret = Math.sin(k * t);
-                t += dt;
-                if (t > T) t -= T;
-                return ret;
+            var ret = Math.sin(k * t);
+            t += dt;
+            if (t > T) t -= T;
+            return ret;
         }
         return _osc;
     }
@@ -177,4 +228,3 @@
   }
 
 })();
-
