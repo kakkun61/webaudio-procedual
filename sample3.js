@@ -16,6 +16,27 @@
 
     var is_pressed = true; // genEnvelope の中で参照されているよ
 
+	var keys = new Array(8); for (var i=0; i<keys.length; i++) {keys[i] = false;}
+
+	var charCodes = {
+		97 = 0,
+		115 = 1,
+		100 = 2,
+		102 = 3,
+		103 = 4,
+		104 = 5,
+		106 = 6,
+		107 = 7,
+	};
+
+    document.onkeypress = function(evt)
+    {
+		evt = evt || window.event;
+		var charCode = evt.keyCode || evt.which;
+		keys[charCodes[charCode]] = true;
+		console.log(charCode); // 97 115 100 102 103 104 106 107
+    }
+
     var main = function ()
     {
       var base_freq = 440;
@@ -68,6 +89,11 @@
         }
       }
     }
+
+	var genKey = function (index, freq)
+	{
+		//TODO: キー入力に対応して
+	}
 
     var genOscillator = function (freq)
     {
