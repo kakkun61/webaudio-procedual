@@ -14,23 +14,39 @@
     processor.connect(context.destination);
     osc.start(0);
 
-    var volume = 0.3;
-    processor.onaudioprocess = function (event)
+    var main = function ()
     {
-        var inputBuffer = event.inputBuffer;
+	  var oscillator = genOscillator(440);
+      processor.onaudioprocess = function (event)
+      {
         var outputBuffer = event.outputBuffer;
-		console.log(context.sampleRate);
-
         for (var channel = 0; channel < outputBuffer.numberOfChannels; channel++)
         {
-            var input  = event.inputBuffer.getChannelData(channel);
             var output = event.outputBuffer.getChannelData(channel);
-            for (var sample_i=0; sample_i<this.bufferSize; sample_i++)
+            for (var buf_i=0; buf_i<this.bufferSize; buf_i++)
             {
-                output[sample_i] = volume * (Math.random() - 0.5);
+                output[buf_i] = oscillator();
             }
         }
+      }
     }
+
+	var genOscillator = function (freq)
+	{
+		var dt = 1.0 / context.sampleRate;
+		var k = 2.0 * Math.PI * freq;
+		var T = 1.0 / freq;
+		var t = 0.0;
+
+		var _oscillator = function ()
+		{
+			var ret = (Math.random() - 0.5); // [-0.5:0.5)
+			return ret;
+		}
+		return _oscillator;
+	}
+
+    main();
   }
 
   if ((document.readyState === "interactive") || (document.readyState === "complete"))
@@ -43,3 +59,4 @@
   }
 
 })();
+
