@@ -2,6 +2,39 @@
 {
   var onDOMContentLoaded = function ()
   {
+    var is_pressed = new Object();
+    is_pressed[97] = false;
+    is_pressed[115] = false;
+    is_pressed[100] = false;
+    is_pressed[102] = false;
+    is_pressed[103] = false;
+    is_pressed[104] = false;
+    is_pressed[106] = false;
+    is_pressed[107] = false;
+
+	var freqs = new Object();
+	var base_freq = 440;
+	var freq_rate = Math.pow(2, 1/12);
+    freqs[97]  = base_freq * Math.pow(freq_rate, 3);
+    freqs[115] = base_freq * Math.pow(freq_rate, 5);
+    freqs[100] = base_freq * Math.pow(freq_rate, 7);
+    freqs[102] = base_freq * Math.pow(freq_rate, 8);
+    freqs[103] = base_freq * Math.pow(freq_rate, 10);
+    freqs[104] = base_freq * Math.pow(freq_rate, 12);
+    freqs[106] = base_freq * Math.pow(freq_rate, 14);
+    freqs[107] = base_freq * Math.pow(freq_rate, 15);
+
+    document.onkeypress = function(evt)
+    {
+        evt = evt || window.event;
+        var charCode = evt.keyCode || evt.which;
+        console.log(charCode);
+        if (charCode in is_pressed)
+        {
+            is_pressed[charCode] = true;
+        }
+    }
+
     window.AudioContext = window.AudioContext || window.webkitAudioContext;
     var context = new AudioContext();
     context.createScriptProcessor = context.createScriptProcessor || context.createJavaScriptNode;
@@ -14,50 +47,15 @@
     processor.connect(context.destination);
     osc.start(0);
 
-    var is_pressed = {
-        97 : false,
-        115 : false,
-        100 : false,
-        102 : false,
-        103 : false,
-        104 : false,
-        106 : false,
-        107 : false,
-    };
-
-    var base_freq = 440;
-    var freq_rate = Math.pow(2, 1/12);
-    var freqs = {
-        97  : base_freq * Math.pow(freq_rate, 3),
-        115 : base_freq * Math.pow(freq_rate, 5),
-        100 : base_freq * Math.pow(freq_rate, 7),
-        102 : base_freq * Math.pow(freq_rate, 8),
-        103 : base_freq * Math.pow(freq_rate, 10),
-        104 : base_freq * Math.pow(freq_rate, 12),
-        106 : base_freq * Math.pow(freq_rate, 14),
-        107 : base_freq * Math.pow(freq_rate, 15),
-    };
-
-    document.onkeypress = function(evt)
-    {
-        evt = evt || window.event;
-        var charCode = evt.keyCode || evt.which;
-        if (charCode in is_pressed)
-        {
-            is_pressed[charCode] = true;
-        }
-        console.log(charCode); // 97 115 100 102 103 104 106 107
-    }
-
     var main = function ()
     {
-      var osc_funcs = new Array();
-      for (key_code in is_pressed)
-      {
-        var osc_func = genOscillator(freqs[key_code]);
-        var envelope = genEnvelope(key_code, osc_func);
-		osc_funcs.push(envelope);
-      }
+	  var osc_funcs = new Array();
+	  for (key in freqs)
+	  {
+          var osc_func = genOscillator(freqs[key]);
+          var envelope = genEnvelope(key, osc_func);
+		  osc_funcs.push(envelope);
+	  }
 	  var f = multiplex(osc_funcs);
       processor.onaudioprocess = function (event)
       {
@@ -67,48 +65,46 @@
             var output = event.outputBuffer.getChannelData(channel);
             for (var buf_i=0; buf_i<this.bufferSize; buf_i++)
             {
-                output[buf_i] = f();
+                output[buf_i] = f(); // [-0.5:0.5)
             }
         }
       }
     }
 
-    var multiplex = function (osc_funcs)
-    {
-        var _osc = function ()
-        {
-            var ret = 0.0;
-            for (key in osc_funcs)
-            {
-                ret += osc_funcs[key]();
-            }
-            return ret;
-        }
-        return _osc;
-    }
+	var multiplex = function (osc_funcs)
+	{
+		var _m = function ()
+		{
+			var ret = 0.0;
+			for (key in osc_funcs)
+			{
+				ret += osc_funcs[key]();
+			}
+			return ret;
+		}
+		return _m;
+	}
+
 
     var genEnvelope = function (key_code, osc_func)
     {
-        // const
         var dt = 1.0 / context.sampleRate;
-        var sustain_level = 0.5;
-        var attack = 0.01;
-        var dekey = 0.03;
-        var release = 1 - attack;
+        var attack = 0.01; //MAxまでの時間
+        var decay = 0.03; // Maxからsustain_levelまで落ちる時間
+        var release = 0.8; // sustain_levelから0まで落ちる時間
+        var sustain_level = 0.3;
 
         var dattack = dt / attack;
-        var ddekey = dt / dekey;
-        var drelease = dt / (release - dekey);
+        var ddecay = dt / decay;
+        var drelease = dt / release;
 
-        // var
         var is_top = false;
-        var gain = 0.0;
+        var gain = 0.0;  // 音量
 
-        var _envelope = function()
+        var _osc = function ()
         {
             if (is_pressed[key_code] === false)
             {
-                is_top = false;
                 gain -= drelease;
                 if (gain < 0.0)
                 {
@@ -117,19 +113,19 @@
                 return gain * osc_func();
             }
 
-            // pressed !!
-            //
+            // Pressed
             if (is_top)
             {
+                is_top = false;
                 if (gain > sustain_level)
                 {
-                    gain -= ddekey;
+                    gain -= ddecay;
                 }
                 else
                 {
                     gain -= drelease;
                 }
-
+                
                 if (gain < 0.0)
                 {
                     gain = 0.0;
@@ -147,7 +143,7 @@
             }
             return gain * osc_func();
         }
-        return _envelope;
+        return _osc;
     }
 
     var genOscillator = function (freq)
@@ -155,16 +151,17 @@
         var dt = 1.0 / context.sampleRate;
         var k = 2.0 * Math.PI * freq;
         var T = 1.0 / freq;
+
         var t = 0.0;
 
-        var _oscillator = function ()
+        var _osc = function ()
         {
-            var ret = Math.sin(k * t);
-			t += dt;
-			if (t > T) t -= T;
-            return ret;
+                var ret = Math.sin(k * t);
+                t += dt;
+                if (t > T) t -= T;
+                return ret;
         }
-        return _oscillator;
+        return _osc;
     }
 
     main();
