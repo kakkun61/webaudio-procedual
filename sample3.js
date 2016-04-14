@@ -34,7 +34,6 @@
 		evt = evt || window.event;
 		var charCode = evt.keyCode || evt.which;
 		keys[charCodes[charCode]] = true;
-		console.log(charCode); // 97 115 100 102 103 104 106 107
     }
 
     var main = function ()
@@ -95,6 +94,54 @@
 		//TODO: キー入力に対応して
 	}
 
+	var genOscillator = function (freq)
+	{
+		var dt = 1.0 / context.sampleRate;
+		var k = 2.0 * Math.PI * freq;
+		var T = 1.0 / freq;
+		var t = 0.0;
+
+		var _oscillator = function ()
+		{
+			var ret = Math.sin(k * t);
+			t += dt;
+			if (t > T) t -= T;
+			return ret;
+		}
+	}
+
+	var genOscillator = function (freq)
+	{
+		var dt = 1.0 / context.sampleRate; // １サンプルにかかる時間
+		var k = 2.0 * Math.PI * freq;
+		var T = 1.0 / freq; // 一周期にかかる時間
+		var t = 0.0;
+
+		var _oscillator = function ()
+		{
+			var ret = Math.sin(k * t);
+			t += dt;
+			if (t > T) t -= T;
+			return re;
+		}
+	}
+
+	var genOscillator = function (freq)
+	{
+		var dt = 1.0 / context.sampleRate;
+		var k = 2.0 * Math.PI * freq;
+		var T = 1.0 / freq;
+		var t = 0.0;
+
+		var _oscillator = function ()
+		{
+			var ret = Math.sin(k * t);
+			t += dt;
+			if (t >T) t -= T;
+			return ret;
+		}
+	}
+
     var genOscillator = function (freq)
     {
       var dt = 1.0 / context.sampleRate;
@@ -120,6 +167,24 @@
       return _gain;
     }
 
+	var genEnvelope = function (osc)
+	{
+		var dt = 1.0 / context.sampleRate;
+		var is_top = false;
+		var gain = 0.0;
+
+		var attack = 0.01;
+		var dekey = 0.03;
+		var sustain_level = 0.5;
+		var sustain = 
+
+		var dattack = dt * 100;  // 100サンプルでアタックせよ
+		var ddekey = dt * 300;
+		var dsustein = dt * 7;
+		var sustain_level = 0.3;
+
+	}
+
     var genEnvelope = function (osc)
     {
       var dt = 1.0 / context.sampleRate;
@@ -129,7 +194,6 @@
 
       var dattack = dt / 0.01;
       var ddekey  = dt / 0.03;
-      var dsustain = dt / 0.7;
       var drelease = dt / 0.8;
 
       var _envelope = function ()

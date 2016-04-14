@@ -2,6 +2,12 @@
 {
   var onDOMContentLoaded = function ()
   {
+    document.onkeypress = function(evt)
+    {
+        evt = evt || window.event;
+        var charCode = evt.keyCode || evt.which;
+    }
+
     window.AudioContext = window.AudioContext || window.webkitAudioContext;
     var context = new AudioContext();
     context.createScriptProcessor = context.createScriptProcessor || context.createJavaScriptNode;
