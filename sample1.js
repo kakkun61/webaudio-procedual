@@ -44,17 +44,28 @@
         }
     }
 
+    var canvas = document.querySelector('.visualizer');
+    var canvasCtx = canvas.getContext('2d');
+
     window.AudioContext = window.AudioContext || window.webkitAudioContext;
     var context = new AudioContext();
     context.createScriptProcessor = context.createScriptProcessor || context.createJavaScriptNode;
     var processor = context.createScriptProcessor(4096, 1, 1);
 
+    var analyser = context.createAnalyser();
+    analyser.minDecibels = -90;
+    analyser.maxDecibels = 0;
+    analyser.smoothingTimeConstant = 0.85;
+
     var osc = context.createOscillator();
     osc.start = osc.start || osc.noteOn;
     osc.stop = osc.stop || osc.noteOff;
     osc.connect(processor);
-    processor.connect(context.destination);
+    processor.connect(analyser);
+    analyser.connect(context.destination);
     osc.start(0);
+
+    visualize();    
 
     var main = function ()
     {
@@ -215,6 +226,42 @@
         return _osc;
     }
 
+    function visualize() {
+        WIDTH = canvas.width;
+        HEIGHT = canvas.height;
+
+        analyser.fftSize = 256;
+        var bufferLength = analyser.frequencyBinCount;
+        console.log(bufferLength);
+        var dataArray = new Uint8Array(bufferLength);
+
+        canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
+
+        function draw() {
+            drawVisual = requestAnimationFrame(draw);
+
+            analyser.getByteFrequencyData(dataArray);
+
+            canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+            canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            var barWidth = (WIDTH / bufferLength) * 2.5;
+            var barHeight;
+            var x = 0;
+
+            for(var i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i];
+
+                canvasCtx.fillStyle = 'rgb(' + (barHeight+100) + ',50,50)';
+                canvasCtx.fillRect(x,HEIGHT-barHeight/2,barWidth,barHeight/2);
+
+                x += barWidth + 1;
+            }
+        };
+
+        draw();
+    }
+
     main();
   }
 
@@ -226,5 +273,4 @@
   {
       document.addEventListener("DOMContentLoaded", onDOMContentLoaded, true);
   }
-
 })();
